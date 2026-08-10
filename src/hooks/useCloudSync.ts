@@ -13,7 +13,7 @@ import { localAssetsAdapter } from '../services/assetsAdapter';
 import { firestoreAssetsAdapter } from '../services/firestoreAssetsAdapter';
 import { useAssetsStore } from '../store/assetsStore';
 import { useActivityStore } from '../store/activityStore';
-import { localActivityAdapter } from '../services/activityAdapter';
+import { formatLocalDay, localActivityAdapter, mergeActivityDays } from '../services/activityAdapter';
 import { firestoreActivityAdapter } from '../services/firestoreActivityAdapter';
 
 let reportedCloudError = false;
@@ -29,10 +29,12 @@ export function useCloudSync() {
   const clearAssets = useAssetsStore((state) => state.clear);
   const setActivityAdapter = useActivityStore((state) => state.setAdapter);
   const clearActivity = useActivityStore((state) => state.clear);
+  const hydrateActivity = useActivityStore((state) => state.hydrateRange);
 
   useEffect(() => {
     void hydrate(syllabi.map((syllabus) => syllabus.exam));
-  }, [hydrate]);
+    void hydrateActivity([formatLocalDay()]);
+  }, [hydrate, hydrateActivity]);
 
   useEffect(() => {
     clearNotes();
@@ -60,7 +62,10 @@ export function useCloudSync() {
         if (cancelled) return;
         for (const day of days) {
           const activity = local[day];
-          if (activity) await remote.save(day, activity);
+          if (activity) {
+            const merged = mergeActivityDays(activity, cloud[day]) ?? activity;
+            await remote.save(day, merged);
+          }
           else if (cloud[day]) await localActivityAdapter.save(day, cloud[day]);
         }
       } catch (error) {

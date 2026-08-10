@@ -1,7 +1,7 @@
 import { collection, doc, getDoc, getDocs, setDoc, where, query } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { ActivityDay } from '../types/activity';
-import { mergeActivityDays, type ActivityAdapter } from './activityAdapter';
+import type { ActivityAdapter } from './activityAdapter';
 
 export function firestoreActivityAdapter(uid: string): ActivityAdapter {
   return {
@@ -10,8 +10,7 @@ export function firestoreActivityAdapter(uid: string): ActivityAdapter {
       return snapshot.exists() ? (snapshot.data() as ActivityDay) : null;
     },
     async save(day, activity) {
-      const existing = await this.load(day);
-      await setDoc(doc(db, 'users', uid, 'activity', day), mergeActivityDays(existing, activity) ?? activity);
+      await setDoc(doc(db, 'users', uid, 'activity', day), activity);
     },
     async list(days) {
       const chunks: string[][] = [];

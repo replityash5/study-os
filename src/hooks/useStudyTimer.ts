@@ -18,27 +18,28 @@ export function advanceTimer(state: TimerState, now: number, hidden = state.hidd
 export function useStudyTimer(topicRef: string | null) {
   const recordInterval = useActivityStore((state) => state.recordInterval);
   const timer = useRef<TimerState>({ topicRef, lastAt: Date.now(), lastInteractionAt: Date.now(), hidden: document.hidden });
-  const flush = useCallback(() => {
+  const flush = useCallback((force = false) => {
     const current = timer.current;
     const now = Date.now();
     const result = advanceTimer(current, now, document.hidden);
     if (result.milliseconds && current.topicRef) recordInterval(current.topicRef, current.lastAt, current.lastAt + result.milliseconds);
+    if (force) useActivityStore.getState().flushPersistence();
     timer.current = { ...result.state, topicRef };
   }, [recordInterval, topicRef]);
   useEffect(() => {
     timer.current = { topicRef, lastAt: Date.now(), lastInteractionAt: Date.now(), hidden: document.hidden };
     if (!topicRef) return undefined;
     const interact = () => { timer.current.lastInteractionAt = Date.now(); };
-    const visibility = () => { flush(); timer.current.hidden = document.hidden; timer.current.lastAt = Date.now(); };
+    const visibility = () => { flush(true); timer.current.hidden = document.hidden; timer.current.lastAt = Date.now(); };
     const interval = window.setInterval(flush, 5_000);
-    const pagehide = () => flush();
+    const pagehide = () => flush(true);
     window.addEventListener('mousemove', interact);
     window.addEventListener('keydown', interact);
     window.addEventListener('pointerdown', interact);
     document.addEventListener('visibilitychange', visibility);
     window.addEventListener('pagehide', pagehide);
     return () => {
-      flush();
+      flush(true);
       window.clearInterval(interval);
       window.removeEventListener('mousemove', interact);
       window.removeEventListener('keydown', interact);

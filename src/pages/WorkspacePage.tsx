@@ -24,8 +24,10 @@ export function WorkspacePage() {
     const topicId = searchParams.get('topic');
     if (!examId || !topicId) return;
     const examIndex = useSyllabusStore.getState().exams.findIndex((exam) => exam.exam === examId);
-    if (examIndex >= 0) setExam(examIndex);
-    selectTopic(topicId);
+    if (examIndex >= 0) {
+      setExam(examIndex);
+      selectTopic(topicId);
+    }
   }, [searchParams, selectTopic, setExam]);
 
   return (

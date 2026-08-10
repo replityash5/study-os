@@ -33,6 +33,20 @@ export function addStudyTime(activity: ActivityDay, topicRef: string, millisecon
   };
 }
 
+export function addActivity(left: ActivityDay, right: ActivityDay): ActivityDay {
+  const result = { ...left, msByTopic: { ...left.msByTopic }, statusChanges: [...left.statusChanges] };
+  result.studyMs += Math.max(0, right.studyMs);
+  for (const [topicRef, milliseconds] of Object.entries(right.msByTopic)) {
+    result.msByTopic[topicRef] = (result.msByTopic[topicRef] ?? 0) + Math.max(0, milliseconds);
+  }
+  for (const event of right.statusChanges) {
+    if (!result.statusChanges.some((item) => item.examId === event.examId && item.topicId === event.topicId && item.at === event.at && item.to === event.to)) {
+      result.statusChanges.push(event);
+    }
+  }
+  return result;
+}
+
 export function recordStatusChange(
   activity: ActivityDay,
   event: Omit<ActivityStatusChange, 'at'> & { at?: string },
@@ -63,7 +77,7 @@ export function aggregateActivity(days: ActivityDay[]) {
 }
 
 export function calculateStreaks(days: ActivityDay[], today = dayKey(new Date())) {
-  const active = new Set(days.filter((day) => day.studyMs > 0).map((day) => day.day));
+  const active = new Set(days.filter((day) => day.studyMs > 0 || day.statusChanges.length > 0).map((day) => day.day));
   const cursor = new Date(`${today}T00:00:00`);
   let current = 0;
   if (active.has(today)) {

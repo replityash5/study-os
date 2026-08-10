@@ -61,9 +61,7 @@ export const localActivityAdapter: ActivityAdapter = {
   },
   async save(day, activity) {
     if (!retainedDay(day)) return;
-    const existing = await localActivityAdapter.load(day);
-    const merged = mergeActivityDays(existing, activity) ?? activity;
-    localStorage.setItem(`study-os-activity-${day}`, JSON.stringify(merged));
+    localStorage.setItem(`study-os-activity-${day}`, JSON.stringify(activity));
     for (const key of Object.keys(localStorage)) {
       if (!key.startsWith('study-os-activity-')) continue;
       if (!retainedDay(key.replace('study-os-activity-', ''))) localStorage.removeItem(key);

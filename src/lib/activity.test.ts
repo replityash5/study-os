@@ -9,6 +9,9 @@ import {
 } from './activity';
 import type { ActivityDay } from '../types/activity';
 import type { Syllabus } from '../types';
+import { useActivityStore } from '../store/activityStore';
+import type { ActivityAdapter } from '../services/activityAdapter';
+import { formatLocalDay } from '../services/activityAdapter';
 
 const syllabus: Syllabus = {
   exam: 'Exam A',
@@ -51,7 +54,12 @@ describe('activity analytics logic', () => {
   });
 
   it('computes current and longest streaks', () => {
-    const days = ['2025-01-01', '2025-01-02', '2025-01-04', '2025-01-05'].map((value) => day(value, 1));
+    const days = [
+      day('2025-01-01', 1),
+      day('2025-01-02', 0, {}, [{ examId: 'Exam A', topicId: 'topic-a', to: 'completed', at: '2025-01-02T10:00:00.000Z' }]),
+      day('2025-01-04', 1),
+      day('2025-01-05', 1),
+    ];
     expect(calculateStreaks(days, '2025-01-05')).toEqual({ current: 2, longest: 2 });
     expect(calculateStreaks(days, '2025-01-06')).toEqual({ current: 2, longest: 2 });
   });
@@ -89,5 +97,26 @@ describe('activity analytics logic', () => {
     const hidden = advanceTimer(base, 30_000, true);
     expect(hidden.milliseconds).toBe(30_000);
     expect(advanceTimer(hidden.state, 60_000, true).milliseconds).toBe(0);
+  });
+
+  it('adds new time on top of a stored day after reload hydration', async () => {
+    const today = formatLocalDay();
+    const stored = day(today, 30 * 60_000, { 'Exam A:topic-a': 30 * 60_000 });
+    const saved: { value: ActivityDay | null } = { value: null };
+    const adapter: ActivityAdapter = {
+      load: async () => stored,
+      save: async (_day, value) => { saved.value = value; },
+      list: async () => ({ [today]: stored }),
+    };
+    const store = useActivityStore.getState();
+    store.clear();
+    store.setAdapter(adapter);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    useActivityStore.getState().recordStudyTime('Exam A:topic-a', 10 * 60_000);
+    useActivityStore.getState().flushPersistence();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(saved.value?.studyMs).toBe(40 * 60_000);
+    expect(saved.value?.msByTopic['Exam A:topic-a']).toBe(40 * 60_000);
+    useActivityStore.getState().clear();
   });
 });
