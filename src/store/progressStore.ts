@@ -6,6 +6,7 @@ import {
   migrateLegacyProgress,
   readLocalProgress,
 } from '../services/progressAdapter';
+import { useActivityStore } from './activityStore';
 
 interface ProgressState {
   activeExamId: string;
@@ -13,7 +14,10 @@ interface ProgressState {
   examStatusMaps: Record<string, ProgressDocument>;
   setActiveExam: (examId: string) => void;
   setStatus: (id: string, status: TopicStatus) => void;
-  setStatuses: (updates: Record<string, TopicStatus>) => void;
+  setStatuses: (
+    updates: Record<string, TopicStatus>,
+    activity?: { examId: string; topicId: string; to: TopicStatus },
+  ) => void;
   replaceExam: (examId: string, document: ProgressDocument) => void;
   hydrate: (examIds: string[]) => Promise<void>;
 }
@@ -32,6 +36,7 @@ export const useProgressStore = create<ProgressState>((set) => ({
       const statusMap = { ...state.statusMap, [id]: status };
       const updatedAt = new Date().toISOString();
       void localProgressAdapter.save(state.activeExamId, { statusMap, updatedAt });
+      useActivityStore.getState().recordStatusChange(state.activeExamId, id, status);
       return {
         statusMap,
         examStatusMaps: {
@@ -40,11 +45,14 @@ export const useProgressStore = create<ProgressState>((set) => ({
         },
       };
     }),
-  setStatuses: (updates) =>
+  setStatuses: (updates, activity) =>
     set((state) => {
       const statusMap = { ...state.statusMap, ...updates };
       const updatedAt = new Date().toISOString();
       void localProgressAdapter.save(state.activeExamId, { statusMap, updatedAt });
+      if (activity) {
+        useActivityStore.getState().recordStatusChange(activity.examId, activity.topicId, activity.to);
+      }
       return {
         statusMap,
         examStatusMaps: {

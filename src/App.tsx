@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './auth/useAuth';
 import { useCloudSync } from './hooks/useCloudSync';
 import { ComingSoonPage } from './pages/ComingSoonPage';
 import { WorkspacePage } from './pages/WorkspacePage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 
 function AuthenticatedApp() {
   const { loading, user, localOnly } = useAuth();
@@ -23,7 +24,7 @@ function StudyRouter() {
       <Sidebar />
       <Routes>
         <Route path="/workspace" element={<WorkspacePage />} />
-        <Route path="/analytics" element={<ComingSoonPage label="Analytics" />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/practice" element={<ComingSoonPage label="Practice" />} />
         <Route path="/bookmarks" element={<ComingSoonPage label="Bookmarks" />} />
         <Route path="/settings" element={<ComingSoonPage label="Settings" />} />
