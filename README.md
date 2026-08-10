@@ -14,6 +14,20 @@ firebase deploy --only firestore:rules
 
 No rules are deployed by the app.
 
+## Analytics activity model
+
+Analytics activity is stored in local-calendar day buckets under
+`study-os-activity-YYYY-MM-DD` locally and `users/{uid}/activity/{day}` in
+Firestore. Each bucket contains total study milliseconds, milliseconds keyed by
+`examId:topicId`, and user-initiated status-change events. The timer pauses when
+the page is hidden or idle for 60 seconds, splits sessions at local midnight,
+and retains approximately 180 days locally.
+
+When local activity is merged into an existing cloud day during sign-in, the
+larger total and per-topic values are retained and status events are
+deduplicated. This deliberately avoids double-counting overlapping local/cloud
+sessions; distinct future sessions receive their own time increments.
+
 ## Google Drive setup
 
 Drive access is optional and is granted separately from Firebase sign-in through

@@ -12,6 +12,9 @@ import { localNotesAdapter } from '../services/notesAdapter';
 import { localAssetsAdapter } from '../services/assetsAdapter';
 import { firestoreAssetsAdapter } from '../services/firestoreAssetsAdapter';
 import { useAssetsStore } from '../store/assetsStore';
+import { useActivityStore } from '../store/activityStore';
+import { formatLocalDay, localActivityAdapter, mergeActivityDays } from '../services/activityAdapter';
+import { firestoreActivityAdapter } from '../services/firestoreActivityAdapter';
 
 let reportedCloudError = false;
 
@@ -24,16 +27,62 @@ export function useCloudSync() {
   const hydrate = useProgressStore((state) => state.hydrate);
   const setAssetsAdapter = useAssetsStore((state) => state.setAdapter);
   const clearAssets = useAssetsStore((state) => state.clear);
+  const setActivityAdapter = useActivityStore((state) => state.setAdapter);
+  const clearActivity = useActivityStore((state) => state.clear);
+  const hydrateActivity = useActivityStore((state) => state.hydrateRange);
 
   useEffect(() => {
     void hydrate(syllabi.map((syllabus) => syllabus.exam));
-  }, [hydrate]);
+    void hydrateActivity([formatLocalDay()]);
+  }, [hydrate, hydrateActivity]);
 
   useEffect(() => {
     clearNotes();
     clearAssets();
+    clearActivity();
     setAssetsAdapter(user ? firestoreAssetsAdapter(user.uid) : localAssetsAdapter);
-  }, [clearAssets, clearNotes, setAssetsAdapter, user]);
+    setActivityAdapter(user ? firestoreActivityAdapter(user.uid) : localActivityAdapter);
+  }, [clearActivity, clearAssets, clearNotes, setActivityAdapter, setAssetsAdapter, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const remote = firestoreActivityAdapter(user.uid);
+    let cancelled = false;
+
+    async function migrateActivity() {
+      const days = Object.keys(localStorage)
+        .filter((key) => key.startsWith('study-os-activity-'))
+        .map((key) => key.replace('study-os-activity-', ''));
+      if (!days.length) return;
+      try {
+        const [local, cloud] = await Promise.all([
+          localActivityAdapter.list(days),
+          remote.list(days),
+        ]);
+        if (cancelled) return;
+        for (const day of days) {
+          const activity = local[day];
+          if (activity) {
+            const merged = mergeActivityDays(activity, cloud[day]) ?? activity;
+            await remote.save(day, merged);
+          }
+          else if (cloud[day]) await localActivityAdapter.save(day, cloud[day]);
+        }
+      } catch (error) {
+        if (!reportedCloudError) {
+          console.warn('Study OS activity sync unavailable; continuing locally.', error);
+          reportedCloudError = true;
+        }
+        setOffline(true);
+        setError('Activity sync unavailable — saving locally');
+      }
+    }
+
+    void migrateActivity();
+    return () => {
+      cancelled = true;
+    };
+  }, [setError, setOffline, user]);
 
   useEffect(() => {
     if (!user) return;

@@ -90,7 +90,11 @@ export const useSyllabusStore = create<SyllabusState>((set) => ({
           return [topicId, status];
         }),
       ) as Record<string, TopicStatus>;
-      useProgressStore.getState().setStatuses(statusUpdates);
+      useProgressStore.getState().setStatuses(statusUpdates, {
+        examId: exam.exam,
+        topicId: id,
+        to: checked ? 'completed' : 'not_started',
+      });
       return { exams };
     }),
 }));

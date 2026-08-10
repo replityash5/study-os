@@ -1,16 +1,34 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Menu } from 'lucide-react';
+import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { SyncStatus } from '../components/SyncStatus';
 import { IconButton } from '../components/ui';
 import { SyllabusExplorer } from '../components/syllabus/SyllabusExplorer';
 import { WorkspacePanels } from '../components/workspace/WorkspacePanels';
 import { useSyllabusStore } from '../store/syllabusStore';
 import { useUIStore } from '../store/uiStore';
+import { useStudyTimer } from '../hooks/useStudyTimer';
 
 export function WorkspacePage() {
   const selectedTopic = useSyllabusStore((state) => state.selectedTopic);
   const drawerOpen = useUIStore((state) => state.drawerOpen);
   const setDrawerOpen = useUIStore((state) => state.setDrawerOpen);
+  const selectedExam = useSyllabusStore((state) => state.exams[state.selectedExam]);
+  const setExam = useSyllabusStore((state) => state.setExam);
+  const selectTopic = useSyllabusStore((state) => state.selectTopic);
+  const [searchParams] = useSearchParams();
+  useStudyTimer(selectedTopic ? `${selectedExam.exam}:${selectedTopic}` : null);
+  useEffect(() => {
+    const examId = searchParams.get('exam');
+    const topicId = searchParams.get('topic');
+    if (!examId || !topicId) return;
+    const examIndex = useSyllabusStore.getState().exams.findIndex((exam) => exam.exam === examId);
+    if (examIndex >= 0) {
+      setExam(examIndex);
+      selectTopic(topicId);
+    }
+  }, [searchParams, selectTopic, setExam]);
 
   return (
     <div className="h-screen overflow-hidden bg-canvas pl-[114px] pr-8 pt-5 max-lg:h-auto max-lg:min-h-screen max-lg:overflow-visible max-md:pb-24 max-md:pl-4 max-md:pr-4">
